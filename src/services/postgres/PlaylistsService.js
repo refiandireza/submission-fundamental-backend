@@ -176,19 +176,21 @@ class PlaylistsService {
   }
 
   async verifyPlaylistAccess(playlistId, userId) {
-    // const isValid = await this.verifyPlaylistOwner(playlistId, userId);
+    const query = {
+      text: 'SELECT * FROM playlists WHERE id = $1',
+      values: [playlistId],
+    };
 
-    // return isValid;
-    try {
-      await this.verifyPlaylistOwner(playlistId, userId);
-    } catch (error) {
-      // if (error instanceof NotFoundError) {
-      //   throw error;
-      // }
+    const { rows } = await this._pool.query(query);
+    if (!rows.length) {
+      throw new NotFoundError('Playlist not found');
+    }
+
+    if (rows[0].owner !== userId) {
       try {
         await this._collaborationsService.verifyCollaborator(playlistId, userId);
       } catch (error) {
-        throw error;
+        throw new AuthorizationError('You don\'t have access for this resource');
       }
     }
   }
