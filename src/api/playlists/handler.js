@@ -91,10 +91,6 @@ class PlaylistsHandler {
     const { songId } = request.payload;
     const { id: credentialId } = request.auth.credentials;
 
-    // const { id } = request.params;
-    // const { songId } = request.payload;
-    // const { id: credentialId } = request.auth.credentials;
-
     await this._playlistsService.verifyPlaylistAccess(id, credentialId);
     await this._playlistsService.deleteSongFromPlaylist(id, songId);
     await this._playlistsService.addActivity(id, songId, credentialId, 'delete');
