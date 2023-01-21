@@ -2,8 +2,9 @@ const autoBind = require('auto-bind');
 const ClientError = require('../../exceptions/ClientError');
 
 class AlbumsHandler {
-  constructor(service, validator) {
+  constructor(service, storageService, validator) {
     this._service = service;
+    this._storageService = storageService;
     this._validator = validator;
 
     autoBind(this);
@@ -51,38 +52,6 @@ class AlbumsHandler {
     };
   }
 
-  // async putAlbumByIdHandler(request, h) {
-  //   try {
-  //     this._validator.validateAlbumPayload(request.payload);
-
-  //     const {id} = request.params;
-  //     const {name, year} = request.payload;
-
-  //     await this._service.editAlbumById(id, {name, year});
-
-  //     return {
-  //       status: 'success',
-  //       message: 'Album berhasil diperbarui',
-  //     };
-  //   } catch (error) {
-  //     if (error instanceof ClientError) {
-  //       const response = h.response({
-  //         status: 'fail',
-  //         message: error.message,
-  //       });
-  //       response.code(error.statusCode);
-  //       return response;
-  //     }
-
-  //     const response = h.response({
-  //       status: 'error',
-  //       message: 'Maaf, terjadi kesalahan pada server',
-  //     });
-  //     response.code(500);
-  //     return response;
-  //   }
-  // }
-
   async deleteAlbumByIdHandler(request, h) {
     const { id } = request.params;
     await this._service.deleteAlbumById(id);
@@ -91,6 +60,22 @@ class AlbumsHandler {
       status: 'success',
       message: 'Album Has Been Deleted',
     };
+  }
+
+  async postAlbumCoverHandler(request, h) {
+    const { id } = request.params;
+    const { cover } = request.payload;
+    this._validator.validateAlbumCoverHeader(cover.hapi.headers);
+
+    const filename = await this._storageService.writeFile(cover, cover.hapi);
+    const url = `http://${process.env.HOST}:${process.env.PORT}/upload/images/${filename}`;
+
+    const response = h.response({
+      status: 'success',
+      message: 'Cover has been uploaded',
+    });
+    response.code(201);
+    return response;
   }
 }
 
