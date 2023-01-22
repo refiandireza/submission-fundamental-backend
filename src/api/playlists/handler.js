@@ -28,13 +28,17 @@ class PlaylistsHandler {
 
   async getPlaylistsHandler(request, h) {
     const { id: credentialId } = request.auth.credentials;
-    const playlists = await this._playlistsService.getPlaylists(credentialId);
-    return {
+    const { cache, playlists } = await this._playlistsService.getPlaylists(credentialId);
+
+    const response = h.response({
       status: 'success',
       data: {
         playlists,
       },
-    };
+    });
+
+    if (cache) response.header('X-Data-Source', 'cache');
+    return response;
   }
 
   async deletePlaylistByIdHandler(request, h) {

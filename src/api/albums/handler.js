@@ -1,5 +1,5 @@
 const autoBind = require('auto-bind');
-const ClientError = require('../../exceptions/ClientError');
+const config = require('../../utils/config');
 
 class AlbumsHandler {
   constructor(service, storageService, validator) {
@@ -68,13 +68,44 @@ class AlbumsHandler {
     this._validator.validateAlbumCoverHeader(cover.hapi.headers);
 
     const filename = await this._storageService.writeFile(cover, cover.hapi);
-    const url = `http://${process.env.HOST}:${process.env.PORT}/upload/images/${filename}`;
+    const url = `http://${config.app.host}:${config.app.port}/upload/images/${filename}`;
+    await this._albumsService.addAlbumCoverById(id, url);
 
     const response = h.response({
       status: 'success',
       message: 'Cover has been uploaded',
     });
     response.code(201);
+    return response;
+  }
+
+  async postAlbumLikeByIdHandler(request, h) {
+    const { id: albumId } = request.params;
+    const { id: userId } = request.auth.credentials;
+
+    await this._albumsService.getAlbumById(albumId);
+    await this._albumsService.addAlbumLikeById(albumId, userId);
+
+    const response = h.respons({
+      status: 'success',
+      message: 'Action Successfully',
+    });
+    response.code(201);
+    return response;
+  }
+
+  async getAlbumLikesByIdHandler(request, h) {
+    const { id } = request.params;
+    const { cache, likes } = await this._albumsService.getAlbumLikesById(id);
+
+    const response = h.response({
+      status: 'success',
+      data: {
+        likes,
+      },
+    });
+
+    if (cache) response.header('X-Data-Source', 'cache');
     return response;
   }
 }

@@ -17,4 +17,4 @@ const AlbumValidator = {
   },
 };
 
-module.exports = { AlbumValidator, AlbumCoverHeadersSchema };
+module.exports = AlbumValidator;

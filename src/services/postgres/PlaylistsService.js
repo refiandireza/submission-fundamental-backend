@@ -5,9 +5,10 @@ const NotFoundError = require('../../exceptions/NotFoundError');
 const AuthorizationError = require('../../exceptions/AuthorizationError');
 
 class PlaylistsService {
-  constructor(collaborationsService) {
+  constructor(collaborationsService, cacheService) {
     this._pool = new Pool();
     this._collaborationsService = collaborationsService;
+    this._cacheService = cacheService;
   }
 
   async addPlaylist(name, owner) {
@@ -24,23 +25,41 @@ class PlaylistsService {
       throw new InvariantError('Fail to add playlist');
     }
 
+    this._cacheService.delete(`playlist:${owner}`);
     return rows[0].id;
   }
 
   async getPlaylists(owner) {
-    const query = {
-      text: `
+    try {
+      const result = await this._cacheService.get(`playlist:${owner}`);
+      const playlist = JSON.parse(result);
+      return {
+        cache: true,
+        playlist,
+      };
+    } catch (error) {
+      const query = {
+        text: `
         SELECT playlists.id, playlists.name, users.username
         FROM playlists
           LEFT JOIN users ON users.id = playlists.owner
           LEFT JOIN collaborations ON collaborations.playlist_id = playlists.id
         WHERE playlists.owner = $1 OR collaborations.user_id = $1
       `,
-      values: [owner],
-    };
-    const result = await this._pool.query(query);
+        values: [owner],
+      };
+      const result = await this._pool.query(query);
 
-    return result.rows;
+      await this._cacheService.set(
+        `playlist:${owner}`,
+        JSON.stringify(result.rows),
+      );
+
+      return {
+        cache: false,
+        playlists: result.rows,
+      };
+    }
   }
 
   async getPlaylistById(playlistId) {
@@ -59,7 +78,7 @@ class PlaylistsService {
 
   async deletePlaylistById(Id) {
     const query = {
-      text: 'DELETE FROM playlists WHERE id = $1 RETURNING id',
+      text: 'DELETE FROM playlists WHERE id = $1 RETURNING id, owner',
       values: [Id],
     };
 
@@ -67,6 +86,7 @@ class PlaylistsService {
     if (!rows.length) {
       throw new InvariantError('Fail to delete playlist. Id not found');
     }
+    this._cacheService.delete(`playlist:${rows[0].owner}`);
   }
 
   async addSongToPlaylist(playlistId, songId) {
@@ -176,19 +196,21 @@ class PlaylistsService {
   }
 
   async verifyPlaylistAccess(playlistId, userId) {
-    // const isValid = await this.verifyPlaylistOwner(playlistId, userId);
+    const query = {
+      text: 'SELECT * FROM playlists WHERE id = $1',
+      values: [playlistId],
+    };
 
-    // return isValid;
-    try {
-      await this.verifyPlaylistOwner(playlistId, userId);
-    } catch (error) {
-      // if (error instanceof NotFoundError) {
-      //   throw error;
-      // }
+    const { rows } = await this._pool.query(query);
+    if (!rows.length) {
+      throw new NotFoundError('Playlist not found');
+    }
+
+    if (rows[0].owner !== userId) {
       try {
         await this._collaborationsService.verifyCollaborator(playlistId, userId);
       } catch (error) {
-        throw error;
+        throw new AuthorizationError('You don\'t have access for this resource');
       }
     }
   }

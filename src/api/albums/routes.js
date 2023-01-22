@@ -30,7 +30,7 @@ const routes = (handler) => [
         allow: 'multipart/form-data',
         multipart: true,
         output: 'stream',
-        maxBytes: 500000,
+        maxBytes: 512000,
       },
     },
   },
@@ -39,9 +39,22 @@ const routes = (handler) => [
     path: '/upload/images/{param*}',
     handler: {
       directory: {
-        path: path.join(__dirname, '/file/images/'),
+        path: path.resolve(__dirname, '/file/images/'),
       },
     },
+  },
+  {
+    method: 'POST',
+    path: '/albums/{id}/likes',
+    handler: handler.postAlbumLikeByIdHandler,
+    options: {
+      auth: 'openmusic_jwt',
+    },
+  },
+  {
+    method: 'GET',
+    path: '/albums/{id}/likes',
+    handler: handler.getAlbumLikesByIdHandler,
   },
 ];
 
