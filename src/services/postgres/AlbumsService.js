@@ -103,19 +103,21 @@ class AlbumsService {
       values: [userId, albumId],
     };
 
-    const { rows: isLikedResult } = await this._pool.query(isLiked);
-    if (!isLikedResult.length) {
+    const isLikedResult = await this._pool.query(isLiked);
+
+    if (!isLikedResult.rows.length) {
       const query = {
         text: 'INSERT INTO user_album_likes VALUES($1, $2, $3) RETURNING id',
         values: [id, userId, albumId],
       };
 
       const { rows } = await this._pool.query(query);
-      if (!rows.length) {
+
+      if (!rows[0].id) {
         throw new InvariantError('Can\'t procces Like action');
       }
     } else {
-      await this.deleteAlbumById(albumId, userId);
+      await this.deleteAlbumLikedById(albumId, userId);
     }
 
     await this._cacheService.delete(`album-likes:${albumId}`);
@@ -151,9 +153,10 @@ class AlbumsService {
       const { rows } = await this._pool.query(query);
 
       if (!rows.length) {
-        throw new NotFoundError('Fail to get result count');
+        throw new NotFoundError('Failed to get result count');
       }
 
+      console.log(rows[0]);
       const likes = parseInt(rows[0].count);
       await this._cacheService.set(`album-likes:${albumId}`, likes);
       return {

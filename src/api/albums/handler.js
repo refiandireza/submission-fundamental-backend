@@ -69,7 +69,7 @@ class AlbumsHandler {
 
     const filename = await this._storageService.writeFile(cover, cover.hapi);
     const url = `http://${config.app.host}:${config.app.port}/upload/images/${filename}`;
-    await this._albumsService.addAlbumCoverById(id, url);
+    await this._service.addAlbumCoverById(id, url);
 
     const response = h.response({
       status: 'success',
@@ -83,10 +83,10 @@ class AlbumsHandler {
     const { id: albumId } = request.params;
     const { id: userId } = request.auth.credentials;
 
-    await this._albumsService.getAlbumById(albumId);
-    await this._albumsService.addAlbumLikeById(albumId, userId);
+    await this._service.getAlbumById(albumId);
+    await this._service.addAlbumLikeById(albumId, userId);
 
-    const response = h.respons({
+    const response = h.response({
       status: 'success',
       message: 'Action Successfully',
     });
@@ -96,7 +96,7 @@ class AlbumsHandler {
 
   async getAlbumLikesByIdHandler(request, h) {
     const { id } = request.params;
-    const { cache, likes } = await this._albumsService.getAlbumLikesById(id);
+    const { cache, likes } = await this._service.getAlbumLikesById(id);
 
     const response = h.response({
       status: 'success',
