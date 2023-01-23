@@ -156,7 +156,6 @@ class AlbumsService {
         throw new NotFoundError('Failed to get result count');
       }
 
-      console.log(rows[0]);
       const likes = parseInt(rows[0].count);
       await this._cacheService.set(`album-likes:${albumId}`, likes);
       return {
